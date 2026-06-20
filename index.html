@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#f4efe8">
+  <meta name="description" content="揉一揉软泥，让紧绷慢慢松开。">
+  <title>软乎乎 · 解压小游戏</title>
+  <style>
+    :root{--ink:#30333c;--muted:#777780;--glass:rgba(255,255,255,.58);--line:rgba(75,65,78,.1)}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+    body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:#f4efe8;user-select:none;-webkit-user-select:none}
+    button{font:inherit;color:inherit;border:0;cursor:pointer}
+    #app{position:relative;width:100%;height:100%;min-height:420px;isolation:isolate;background:radial-gradient(circle at 18% 18%,rgba(255,255,255,.92),transparent 34%),linear-gradient(145deg,#f7f1e9,#eae8e1)}
+    #app::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.28;background-image:radial-gradient(rgba(64,50,72,.16) .65px,transparent .65px);background-size:15px 15px}
+    canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+    header{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:max(18px,env(safe-area-inset-top)) 20px 12px;pointer-events:none}
+    .brand{pointer-events:auto}
+    .brand h1{font-family:Georgia,"Songti SC",serif;font-size:clamp(22px,6vw,28px);letter-spacing:.12em;margin:0 0 4px;font-weight:600}
+    .brand p{font-size:12px;color:var(--muted);margin:0;letter-spacing:.08em}
+    .tools{display:flex;gap:8px;pointer-events:auto}
+    .icon-btn{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:var(--glass);box-shadow:inset 0 0 0 1px var(--line),0 6px 24px rgba(66,55,70,.08);backdrop-filter:blur(12px);transition:transform .16s,background .16s}
+    .icon-btn:active{transform:scale(.9)}
+    .icon-btn[aria-pressed="false"]{opacity:.48}
+    .icon-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .hint{position:absolute;left:50%;top:19%;transform:translateX(-50%);padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.5);color:#78717a;font-size:12px;letter-spacing:.08em;white-space:nowrap;pointer-events:none;animation:breathe 2.5s ease-in-out infinite;transition:opacity .45s,transform .45s}
+    .hint.hidden{opacity:0;transform:translate(-50%,-8px)}
+    @keyframes breathe{50%{transform:translateX(-50%) translateY(-3px)}}
+    .bottom{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:11px;pointer-events:none}
+    .mood{height:24px;font-family:Georgia,"Songti SC",serif;font-size:15px;letter-spacing:.12em;color:#655e68;transition:opacity .2s}
+    .palette{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 1px var(--line),0 8px 28px rgba(66,55,70,.09);backdrop-filter:blur(13px);pointer-events:auto}
+    .swatch{width:29px;height:29px;padding:0;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);transition:transform .18s,box-shadow .18s}
+    .swatch.active{transform:scale(1.18);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),0 0 0 2px #5f5963}
+    .swatch:active{transform:scale(.9)}
+    .toast{position:absolute;left:50%;top:29%;transform:translate(-50%,8px);font-family:Georgia,"Songti SC",serif;font-size:clamp(18px,5vw,24px);letter-spacing:.16em;color:#544d58;opacity:0;pointer-events:none}
+    .toast.show{animation:floatup 1s ease-out}
+    @keyframes floatup{0%{opacity:0;transform:translate(-50%,10px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-28px)}}
+    .noscript{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#f4efe8}
+    @media (max-height:560px){.hint{top:16%}.bottom{bottom:max(8px,env(safe-area-inset-bottom));gap:5px}.mood{font-size:13px}.palette{padding:6px 10px}.swatch{width:25px;height:25px}}
+    @media (prefers-reduced-motion:reduce){.hint{animation:none}}
+  </style>
+</head>
+<body>
+<main id="app" aria-label="软泥解压小游戏">
+  <canvas id="game" aria-label="可以点击、按住或滑动揉捏的软泥"></canvas>
+  <header>
+    <div class="brand"><h1>软乎乎</h1><p>揉一揉，让心慢下来</p></div>
+    <div class="tools">
+      <button class="icon-btn" id="sound" type="button" aria-label="声音" aria-pressed="true">
+        <svg viewBox="0 0 24 24"><path d="M5 10v4h3l4 3V7l-4 3H5Z"/><path class="waves" d="M16 9.2a4 4 0 0 1 0 5.6M18.5 7a7 7 0 0 1 0 10"/></svg>
+      </button>
+      <button class="icon-btn" id="haptic" type="button" aria-label="震动" aria-pressed="true">
+        <svg viewBox="0 0 24 24"><rect x="8" y="5" width="8" height="14" rx="2"/><path d="M5.5 8.5a5 5 0 0 0 0 7M18.5 8.5a5 5 0 0 1 0 7"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="hint" id="hint">按住它，慢慢揉一揉</div>
+  <div class="toast" id="toast" aria-live="polite"></div>
+  <section class="bottom" aria-label="软泥颜色">
+    <div class="mood" id="mood">今天也辛苦啦</div>
+    <div class="palette">
+      <button class="swatch active" style="--c:#f49aaa" data-color="#f49aaa" aria-label="蜜桃粉"></button>
+      <button class="swatch" style="--c:#8bbfd1" data-color="#8bbfd1" aria-label="雾霾蓝"></button>
+      <button class="swatch" style="--c:#a9c98e" data-color="#a9c98e" aria-label="抹茶绿"></button>
+      <button class="swatch" style="--c:#bea5d5" data-color="#bea5d5" aria-label="香芋紫"></button>
+      <button class="swatch" style="--c:#efbe78" data-color="#efbe78" aria-label="奶油橙"></button>
+    </div>
+  </section>
+</main>
+<noscript><div class="noscript">请开启 JavaScript 后再来揉软泥。</div></noscript>
+<script>
+(()=>{
+  'use strict';
+  const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d',{alpha:true});
+  const hint=document.querySelector('#hint'),toast=document.querySelector('#toast'),mood=document.querySelector('#mood');
+  const soundBtn=document.querySelector('#sound'),hapticBtn=document.querySelector('#haptic');
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const phrases=['呼——松一点了','慢慢来，不着急','捏走一点小情绪','软乎乎，心也软乎乎','很好，再揉一下'];
+  let W=0,H=0,dpr=1,cx=0,cy=0,baseR=120,color='#f49aaa',soundOn=true,hapticOn=true;
+  let points=[],particles=[],ripples=[],pointer=null,interactions=0,lastPhrase=0,audio=null;
+
+  function resize(){
+    const r=canvas.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;
+    canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+    cx=W/2;cy=H*.53;baseR=Math.min(W*.31,H*.245,164);
+    if(!points.length) makeBlob(); else points.forEach((p,i)=>{const a=i/points.length*Math.PI*2;p.homeX=cx+Math.cos(a)*baseR;p.homeY=cy+Math.sin(a)*baseR});
+  }
+  function makeBlob(){points=Array.from({length:44},(_,i)=>{const a=i/44*Math.PI*2;return{x:cx+Math.cos(a)*baseR,y:cy+Math.sin(a)*baseR,homeX:cx+Math.cos(a)*baseR,homeY:cy+Math.sin(a)*baseR,vx:0,vy:0}})}
+  function hexToRgb(hex){const n=parseInt(hex.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]}
+  function shade(hex,n){const [r,g,b]=hexToRgb(hex);return`rgb(${Math.max(0,Math.min(255,r+n))},${Math.max(0,Math.min(255,g+n))},${Math.max(0,Math.min(255,b+n))})`}
+  function blobPath(){
+    ctx.beginPath();const n=points.length;
+    for(let i=0;i<n;i++){const p=points[i],next=points[(i+1)%n],mx=(p.x+next.x)/2,my=(p.y+next.y)/2;i?ctx.quadraticCurveTo(p.x,p.y,mx,my):ctx.moveTo(mx,my)}ctx.closePath();
+  }
+  function update(){
+    let pullX=0,pullY=0;
+    if(pointer){pullX=pointer.x-cx;pullY=pointer.y-cy}
+    points.forEach((p,i)=>{
+      const a=i/points.length*Math.PI*2,wobble=reduceMotion?0:Math.sin(performance.now()*.0015+i*.62)*1.2;
+      let tx=p.homeX+Math.cos(a)*wobble,ty=p.homeY+Math.sin(a)*wobble;
+      if(pointer){
+        const dx=pointer.x-p.x,dy=pointer.y-p.y,dist=Math.hypot(dx,dy),reach=baseR*.82;
+        if(dist<reach){const f=(1-dist/reach);tx+=pullX*f*.32;ty+=pullY*f*.32}
+        const squash=Math.max(0,1-Math.hypot(p.homeX-pointer.x,p.homeY-pointer.y)/(baseR*.72));tx-=(p.homeX-cx)*squash*.14;ty-=(p.homeY-cy)*squash*.14;
+      }
+      p.vx+=(tx-p.x)*.055;p.vy+=(ty-p.y)*.055;p.vx*=.82;p.vy*=.82;p.x+=p.vx;p.y+=p.vy;
+    });
+    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.015;p.life-=.024;p.size*=.986});particles=particles.filter(p=>p.life>0);
+    ripples.forEach(r=>{r.radius+=2.4;r.life-=.035});ripples=ripples.filter(r=>r.life>0);
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.save();ctx.filter='blur(16px)';ctx.beginPath();ctx.ellipse(cx,cy+baseR*.86,baseR*.76,baseR*.21,0,0,Math.PI*2);ctx.fillStyle='rgba(62,48,67,.2)';ctx.fill();ctx.restore();
+    blobPath();const grad=ctx.createRadialGradient(cx-baseR*.35,cy-baseR*.42,baseR*.05,cx,cy,baseR*1.25);grad.addColorStop(0,shade(color,58));grad.addColorStop(.38,color);grad.addColorStop(1,shade(color,-42));ctx.fillStyle=grad;ctx.shadowColor='rgba(70,55,75,.2)';ctx.shadowBlur=25;ctx.shadowOffsetY=12;ctx.fill();ctx.shadowColor='transparent';
+    ctx.save();blobPath();ctx.clip();const shine=ctx.createRadialGradient(cx-baseR*.36,cy-baseR*.4,0,cx-baseR*.36,cy-baseR*.4,baseR*.6);shine.addColorStop(0,'rgba(255,255,255,.52)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fillRect(cx-baseR,cy-baseR,baseR*2,baseR*2);ctx.restore();
+    ripples.forEach(r=>{ctx.beginPath();ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);ctx.strokeStyle=`rgba(255,255,255,${r.life*.48})`;ctx.lineWidth=3*r.life;ctx.stroke()});
+    particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill()});ctx.globalAlpha=1;
+  }
+  function frame(){update();draw();requestAnimationFrame(frame)}
+  function local(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+  function inside(pos){return Math.hypot(pos.x-cx,pos.y-cy)<baseR*1.18}
+  function interact(pos,strong=false){
+    ripples.push({x:pos.x,y:pos.y,radius:5,life:1});
+    const amount=strong?10:3;
+    for(let i=0;i<amount;i++){const a=Math.random()*Math.PI*2,s=.4+Math.random()*1.3;particles.push({x:pos.x,y:pos.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,size:2+Math.random()*3,life:.7+Math.random()*.3,color:shade(color,45)})}
+  }
+  function tone(){
+    if(!soundOn)return;
+    try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain(),f=155+Math.random()*50;o.type='sine';o.frequency.setValueAtTime(f,audio.currentTime);o.frequency.exponentialRampToValueAtTime(f*.68,audio.currentTime+.12);g.gain.setValueAtTime(.0001,audio.currentTime);g.gain.exponentialRampToValueAtTime(.045,audio.currentTime+.012);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.15);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.16)}catch(_){}
+  }
+  function celebrate(){
+    interactions++;hint.classList.add('hidden');tone();if(hapticOn&&navigator.vibrate)navigator.vibrate(12);
+    if(interactions%7===0){const now=Date.now();if(now-lastPhrase>900){lastPhrase=now;toast.textContent=phrases[Math.floor(interactions/7-1)%phrases.length];toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');mood.textContent=interactions>=28?'感觉轻一点了吗？':'今天也辛苦啦'}}
+  }
+  canvas.addEventListener('pointerdown',e=>{const p=local(e);if(!inside(p))return;canvas.setPointerCapture(e.pointerId);pointer={...p,id:e.pointerId};interact(p,true);celebrate();e.preventDefault()});
+  canvas.addEventListener('pointermove',e=>{if(!pointer||e.pointerId!==pointer.id)return;const p=local(e);pointer.x=p.x;pointer.y=p.y;if(Math.random()>.62)interact(p,false);e.preventDefault()});
+  function release(e){if(!pointer||e.pointerId!==pointer.id)return;pointer=null}
+  canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+  document.querySelectorAll('.swatch').forEach(btn=>btn.addEventListener('click',()=>{document.querySelector('.swatch.active')?.classList.remove('active');btn.classList.add('active');color=btn.dataset.color;tone();points.forEach((p,i)=>{const a=i/points.length*Math.PI*2;p.vx+=Math.cos(a)*4;p.vy+=Math.sin(a)*4})}));
+  soundBtn.addEventListener('click',()=>{soundOn=!soundOn;soundBtn.setAttribute('aria-pressed',soundOn);if(soundOn)tone()});
+  hapticBtn.addEventListener('click',()=>{hapticOn=!hapticOn;hapticBtn.setAttribute('aria-pressed',hapticOn);if(hapticOn&&navigator.vibrate)navigator.vibrate(10)});
+  addEventListener('resize',resize,{passive:true});resize();frame();
+})();
+</script>
+</body>
+</html>
