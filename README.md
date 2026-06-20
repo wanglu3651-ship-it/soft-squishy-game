@@ -14,7 +14,7 @@ python -m http.server 8000
 
 ## 公网发布
 
-仓库已包含 GitHub Pages 自动发布配置。把这个目录作为独立仓库推送到 GitHub 后，在仓库设置中将 **Pages → Source** 设为 **GitHub Actions**；以后每次推送都会自动发布。
+当前仓库使用 GitHub Pages 从 `main` 分支根目录直接发布；更新 `index.html` 后即可自动重新发布。
 
 也可以直接部署到 Cloudflare Pages、Netlify 或 Vercel，无需构建命令。
 
