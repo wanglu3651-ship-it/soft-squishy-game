@@ -45,7 +45,7 @@
 <main id="app" aria-label="软泥解压小游戏">
   <canvas id="game" aria-label="可以点击、按住或滑动揉捏的软泥"></canvas>
   <header>
-    <div class="brand"><h1>软乎乎</h1><p>揉一揉，让心慢下来</p></div>
+    <div class="brand"><h1>软乎乎</h1><p>慢慢来，不着急</p></div>
     <div class="tools">
       <button class="icon-btn" id="sound" type="button" aria-label="声音" aria-pressed="true">
         <svg viewBox="0 0 24 24"><path d="M5 10v4h3l4 3V7l-4 3H5Z"/><path class="waves" d="M16 9.2a4 4 0 0 1 0 5.6M18.5 7a7 7 0 0 1 0 10"/></svg>
@@ -70,18 +70,18 @@
 </main>
 <noscript><div class="noscript">请开启 JavaScript 后再来揉软泥。</div></noscript>
 <script>
-(()=>{
-  'use strict';
+(()=>{'use strict';
   const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d',{alpha:true});
   const hint=document.querySelector('#hint'),toast=document.querySelector('#toast'),mood=document.querySelector('#mood');
   const soundBtn=document.querySelector('#sound'),hapticBtn=document.querySelector('#haptic');
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const phrases=['呼——松一点了','慢慢来，不着急','捏走一点小情绪','软乎乎，心也软乎乎','很好，再揉一下'];
+  const phrases=['啵','啵啵','啵啵啵'];
   let W=0,H=0,dpr=1,cx=0,cy=0,baseR=120,color='#f49aaa',soundOn=true,hapticOn=true;
-  let points=[],particles=[],ripples=[],pointer=null,interactions=0,lastPhrase=0,audio=null;
+  let points=[],particles=[],ripples=[],pointer=null,interactions=0,lastPhrase=0,audio=null,reboundTone=0;
 
   function resize(){
-    const r=canvas.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;
+    const r=canvas.getBoundingClientRect();
+    dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;
     canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
     cx=W/2;cy=H*.53;baseR=Math.min(W*.31,H*.245,164);
     if(!points.length) makeBlob(); else points.forEach((p,i)=>{const a=i/points.length*Math.PI*2;p.homeX=cx+Math.cos(a)*baseR;p.homeY=cy+Math.sin(a)*baseR});
@@ -100,9 +100,22 @@
       const a=i/points.length*Math.PI*2,wobble=reduceMotion?0:Math.sin(performance.now()*.0015+i*.62)*1.2;
       let tx=p.homeX+Math.cos(a)*wobble,ty=p.homeY+Math.sin(a)*wobble;
       if(pointer){
-        const dx=pointer.x-p.x,dy=pointer.y-p.y,dist=Math.hypot(dx,dy),reach=baseR*.82;
-        if(dist<reach){const f=(1-dist/reach);tx+=pullX*f*.32;ty+=pullY*f*.32}
-        const squash=Math.max(0,1-Math.hypot(p.homeX-pointer.x,p.homeY-pointer.y)/(baseR*.72));tx-=(p.homeX-cx)*squash*.14;ty-=(p.homeY-cy)*squash*.14;
+        const dx=pointer.x-p.x,dy=pointer.y-p.y,dist=Math.hypot(dx,dy*.72);
+        const reach=baseR*2.05,inner=baseR*.92;
+        if(dist<reach){
+          const f=1-dist/reach;
+          tx+=pullX*f*.26;ty+=pullY*f*.34;
+          const dent=Math.max(0,1-Math.hypot(dx,dy*.7)/inner);
+          if(dent>0){
+            tx+=dx*dent*.5;
+            ty+=dy*dent*.86;
+          }else{
+            tx-=dx*f*.06;
+            ty-=dy*f*.11;
+          }
+        }
+        const squash=Math.max(0,1-Math.hypot(p.homeX-pointer.x,(p.homeY-pointer.y)*.72)/(baseR*.78));
+        tx-=(p.homeX-cx)*squash*.15;ty-=(p.homeY-cy)*squash*.15;
       }
       p.vx+=(tx-p.x)*.055;p.vy+=(ty-p.y)*.055;p.vx*=.82;p.vy*=.82;p.x+=p.vx;p.y+=p.vy;
     });
@@ -114,12 +127,18 @@
     ctx.save();ctx.filter='blur(16px)';ctx.beginPath();ctx.ellipse(cx,cy+baseR*.86,baseR*.76,baseR*.21,0,0,Math.PI*2);ctx.fillStyle='rgba(62,48,67,.2)';ctx.fill();ctx.restore();
     blobPath();const grad=ctx.createRadialGradient(cx-baseR*.35,cy-baseR*.42,baseR*.05,cx,cy,baseR*1.25);grad.addColorStop(0,shade(color,58));grad.addColorStop(.38,color);grad.addColorStop(1,shade(color,-42));ctx.fillStyle=grad;ctx.shadowColor='rgba(70,55,75,.2)';ctx.shadowBlur=25;ctx.shadowOffsetY=12;ctx.fill();ctx.shadowColor='transparent';
     ctx.save();blobPath();ctx.clip();const shine=ctx.createRadialGradient(cx-baseR*.36,cy-baseR*.4,0,cx-baseR*.36,cy-baseR*.4,baseR*.6);shine.addColorStop(0,'rgba(255,255,255,.52)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fillRect(cx-baseR,cy-baseR,baseR*2,baseR*2);ctx.restore();
+    if(pointer){
+      ctx.save();blobPath();ctx.clip();
+      const press=ctx.createRadialGradient(pointer.x-12,pointer.y-12,2,pointer.x,pointer.y,baseR*.78);
+      press.addColorStop(0,'rgba(40,26,42,.22)');press.addColorStop(.35,'rgba(40,26,42,.08)');press.addColorStop(1,'rgba(40,26,42,0)');
+      ctx.fillStyle=press;ctx.beginPath();ctx.ellipse(pointer.x,pointer.y,baseR*.34,baseR*.33,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
     ripples.forEach(r=>{ctx.beginPath();ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);ctx.strokeStyle=`rgba(255,255,255,${r.life*.48})`;ctx.lineWidth=3*r.life;ctx.stroke()});
     particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life);ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill()});ctx.globalAlpha=1;
   }
   function frame(){update();draw();requestAnimationFrame(frame)}
   function local(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
-  function inside(pos){return Math.hypot(pos.x-cx,pos.y-cy)<baseR*1.18}
+  function inside(pos){return Math.hypot(pos.x-cx,pos.y-cy)<baseR*1.08}
   function interact(pos,strong=false){
     ripples.push({x:pos.x,y:pos.y,radius:5,life:1});
     const amount=strong?10:3;
@@ -127,20 +146,56 @@
   }
   function tone(){
     if(!soundOn)return;
-    try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain(),f=155+Math.random()*50;o.type='sine';o.frequency.setValueAtTime(f,audio.currentTime);o.frequency.exponentialRampToValueAtTime(f*.68,audio.currentTime+.12);g.gain.setValueAtTime(.0001,audio.currentTime);g.gain.exponentialRampToValueAtTime(.045,audio.currentTime+.012);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.15);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+.16)}catch(_){}
+    try{
+      audio=audio||new(window.AudioContext||window.webkitAudioContext)();
+      const t=audio.currentTime;
+      const step=(at,pitch,amp,tilt=1)=>{
+        const o=audio.createOscillator(),g=audio.createGain(),f=audio.createBiquadFilter();
+        o.type='triangle';
+        o.frequency.setValueAtTime(pitch,at);
+        o.frequency.exponentialRampToValueAtTime(pitch*.74,at+.045);
+        f.type='lowpass';
+        f.frequency.setValueAtTime(tilt*1600,at);
+        f.frequency.exponentialRampToValueAtTime(tilt*700,at+.05);
+        g.gain.setValueAtTime(.0001,at);
+        g.gain.exponentialRampToValueAtTime(amp,at+.008);
+        g.gain.exponentialRampToValueAtTime(amp*.35,at+.028);
+        g.gain.exponentialRampToValueAtTime(.0001,at+.08);
+        o.connect(f).connect(g).connect(audio.destination);
+        o.start(at);o.stop(at+.085);
+      };
+      step(t,240+Math.random()*35,.425,1);
+      step(t+.055,290+Math.random()*45,.325,.9);
+    }catch(_){}
   }
   function celebrate(){
     interactions++;hint.classList.add('hidden');tone();if(hapticOn&&navigator.vibrate)navigator.vibrate(12);
-    if(interactions%7===0){const now=Date.now();if(now-lastPhrase>900){lastPhrase=now;toast.textContent=phrases[Math.floor(interactions/7-1)%phrases.length];toast.classList.remove('show');void toast.offsetWidth;toast.classList.add('show');mood.textContent=interactions>=28?'感觉轻一点了吗？':'今天也辛苦啦'}}
+    const now=Date.now();
+    if(now-lastPhrase>180){
+      lastPhrase=now;
+      toast.textContent=phrases[Math.floor(Math.random()*phrases.length)];
+      toast.classList.remove('show');
+      void toast.offsetWidth;
+      toast.classList.add('show');
+    }
+    mood.textContent='今天也辛苦啦';
   }
   canvas.addEventListener('pointerdown',e=>{const p=local(e);if(!inside(p))return;canvas.setPointerCapture(e.pointerId);pointer={...p,id:e.pointerId};interact(p,true);celebrate();e.preventDefault()});
   canvas.addEventListener('pointermove',e=>{if(!pointer||e.pointerId!==pointer.id)return;const p=local(e);pointer.x=p.x;pointer.y=p.y;if(Math.random()>.62)interact(p,false);e.preventDefault()});
-  function release(e){if(!pointer||e.pointerId!==pointer.id)return;pointer=null}
-  canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+  function release(e){
+    if(!pointer||e.pointerId!==pointer.id)return;
+    pointer=null;
+    clearTimeout(reboundTone);
+    reboundTone=setTimeout(()=>tone(),90);
+  }
+  canvas.addEventListener('pointerup',release);
+  canvas.addEventListener('pointercancel',release);
   document.querySelectorAll('.swatch').forEach(btn=>btn.addEventListener('click',()=>{document.querySelector('.swatch.active')?.classList.remove('active');btn.classList.add('active');color=btn.dataset.color;tone();points.forEach((p,i)=>{const a=i/points.length*Math.PI*2;p.vx+=Math.cos(a)*4;p.vy+=Math.sin(a)*4})}));
   soundBtn.addEventListener('click',()=>{soundOn=!soundOn;soundBtn.setAttribute('aria-pressed',soundOn);if(soundOn)tone()});
   hapticBtn.addEventListener('click',()=>{hapticOn=!hapticOn;hapticBtn.setAttribute('aria-pressed',hapticOn);if(hapticOn&&navigator.vibrate)navigator.vibrate(10)});
-  addEventListener('resize',resize,{passive:true});resize();frame();
+  addEventListener('resize',resize,{passive:true});
+  resize();
+  frame();
 })();
 </script>
 </body>
