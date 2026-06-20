@@ -4,7 +4,3 @@
 !.nojekyll
 !index.html
 !README.md
-!.github/
-!.github/workflows/
-!.github/workflows/deploy-game.yml
-
